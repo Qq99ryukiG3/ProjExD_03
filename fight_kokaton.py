@@ -41,14 +41,19 @@ class Bird:
         引数1 num：こうかとん画像ファイル名の番号
         引数2 xy：こうかとん画像の位置座標タプル
         """
-        self.img = pg.transform.flip(  # 左右反転
-            pg.transform.rotozoom(  # 2倍に拡大
-                pg.image.load(f"ex03/fig/{num}.png"), 
-                0, 
-                2.0), 
-            True, 
-            False
-        )
+        img0 = pg.transform.rotozoom(pg.image.load(f"ex03/fig/{num}.png"), 0, 2.0)  # 左向き
+        img = pg.transform.flip(img0, True, False)  # 右向き
+        self.imgs = {
+            (+5, 0): img,  # 右
+            (+5, -5): pg.transform.rotozoom(img, 45, 1.0),  # 右上
+            (0, -5): pg.transform.rotozoom(img, 90, 1.0),  # 上
+            (-5, -5): pg.transform.rotozoom(img0, -45, 1.0),  # 左上
+            (-5, 0): img0,  # 左
+            (-5, +5): pg.transform.rotozoom(img0, 45, 1.0),  # 左下
+            (0, +5): pg.transform.rotozoom(img, -90, 1.0),  # 下
+            (+5, +5): pg.transform.rotozoom(img, -45, 1.0),  # 右下
+        }
+        self.img = self.imgs[(+5, 0)]  # デフォルト：右向き
         self.rct = self.img.get_rect()
         self.rct.center = xy
 
@@ -75,6 +80,8 @@ class Bird:
         self.rct.move_ip(sum_mv)
         if check_bound(self.rct) != (True, True):
             self.rct.move_ip(-sum_mv[0], -sum_mv[1])
+        if not (sum_mv[0] == 0 and sum_mv[1] == 0):  # 何かしらの矢印キーが押されていたら
+            self.img = self.imgs[tuple(sum_mv)] 
         screen.blit(self.img, self.rct)
 
 
@@ -110,6 +117,7 @@ class Bomb:
 
 
 class Beam:
+
     """
     こうかとんが放つビームに関するクラス
     """
@@ -131,6 +139,24 @@ class Beam:
         """
         self.rct.move_ip(self.vx, self.vy)
         screen.blit(self.img, self.rct)
+class Score:
+    """
+    スコアを表示する
+    """
+    
+    def __init__(self):
+        self.font = pg.font.SysFont("hpg創英角ポップ体",30)
+        self.blue = (0,0,255)
+        self.s = 0
+        self.img = self.font.render("スコア:",self.s,self.blue)
+        self.x,self.y = 100,50
+    
+    def update(self, screen:pg.Surface):
+        if check_bound(Bomb):
+            self.s += 1
+            screen.blit(self.img)
+
+
 
 
 def main():
@@ -141,6 +167,7 @@ def main():
     # bomb = Bomb((255, 0, 0), 10)
     bombs = [Bomb((255, 0, 0), 10) for _ in range(NUM_OF_BOMBS)]
     beam = None
+    score = Score
 
     clock = pg.time.Clock()
     tmr = 0
@@ -150,8 +177,9 @@ def main():
                 return
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beam = Beam(bird)  # ビームクラスのインスタンスを生成する
-                
+                beam = Beam(bird)
         screen.blit(bg_img, [0, 0])
+        
         
         for bomb in bombs:
             if bird.rct.colliderect(bomb.rct):
